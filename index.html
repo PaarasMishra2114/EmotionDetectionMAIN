@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Face / feeling lab</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="Face feeling lab home">
+      <span class="brand-mark">ff</span>
+      <span>face / feeling lab</span>
+    </a>
+    <div class="topbar-tools"><div class="topbar-meta"><span class="live-dot"></span> local preview <span class="slash">/</span> FER-2013</div><button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark theme" title="Switch theme"><span class="theme-icon">&#9788;</span> <span id="themeLabel">light</span></button></div>
+  </header>
+
+  <main id="top" class="shell">
+    <section class="intro reveal">
+      <p class="kicker">real-time perception tool</p>
+      <h1>Read the room.<br><em>Start with one face.</em></h1>
+      <p class="intro-copy">A clear, calm workspace for exploring facial expression signals as they happen.</p>
+    </section>
+
+    <section class="workspace reveal" aria-label="Emotion detection workspace">
+      <div class="camera-column">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">01 / live input</p>
+            <h2>Camera feed</h2>
+          </div>
+          <span id="cameraStatus" class="status-pill idle">camera idle</span>
+        </div>
+        <div class="camera-frame" id="cameraFrame">
+          <video id="video" playsinline muted></video>
+          <canvas id="overlay" aria-hidden="true"></canvas>
+          <div class="camera-placeholder" id="placeholder">
+            <div class="lens-icon">+</div>
+            <p>Camera feed is ready</p>
+            <span>Allow access to begin the preview</span>
+          </div>
+          <div class="scan-line"></div>
+          <div class="camera-label"><span class="live-dot"></span> live / 30 fps</div>
+        </div>
+        <div class="camera-actions">
+          <button class="button button-primary" id="startButton" type="button"><span class="button-icon">&#9654;</span> Start camera</button>
+          <button class="button button-capture" id="captureButton" type="button" disabled><span class="button-icon">&#9673;</span> Capture &amp; analyze</button>
+          <button class="icon-button" id="resetButton" type="button" title="Reset session" aria-label="Reset session">&#8634;</button>
+        </div>
+        <label class="upload-box" for="imageInput"><span class="upload-icon">&#8593;</span><span><strong>Analyze a JPG or PNG</strong><small id="uploadStatus">Choose a clear face image for CNN analysis</small></span><span class="upload-arrow">&#8594;</span></label>
+        <input id="imageInput" type="file" accept="image/jpeg,image/png" hidden>
+        <p class="privacy-note"><span class="lock">[ ]</span> Nothing is analyzed until you capture. Each result comes from the CNN and face detector.</p>
+      </div>
+
+      <aside class="insights-column">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">02 / current read</p>
+            <h2>Expression signal</h2>
+          </div>
+          <span class="model-badge">CNN / 7 classes</span>
+        </div>
+        <div class="signal-card">
+          <div class="signal-topline"><span id="signalLabel">Waiting for input</span><span id="signalTime">--:--</span></div>
+          <div class="signal-emotion" id="signalEmotion">Neutral</div>
+          <div class="confidence-row"><span>confidence</span><strong id="confidenceValue">0%</strong></div>
+          <div class="confidence-track"><span id="confidenceBar"></span></div>
+        </div>
+        <div class="distribution" id="distribution"></div>
+        <div class="legend-note"><span class="legend-swatch"></span> signal intensity <span class="legend-separator">|</span> updates on capture</div>
+      </aside>
+    </section>
+
+    <section class="plot-section reveal">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">03 / session trace</p>
+          <h2>Emotion over time</h2>
+        </div>
+        <div class="session-stats"><span><strong id="sampleCount">0</strong> samples</span><span class="stat-divider"></span><span><strong id="sessionDuration">00:00</strong> session</span></div>
+      </div>
+      <div class="plot-wrap"><canvas id="plot" aria-label="Emotion intensity plot"></canvas><div class="plot-empty" id="plotEmpty">Start the camera to draw a live trace.</div></div>
+      <div class="plot-legend" id="plotLegend"></div>
+    </section>
+
+    <section class="history-section reveal">
+      <div class="section-head"><div><p class="eyebrow">04 / recent moments</p><h2>Signal history</h2></div><span class="history-count" id="historyCount">0 events</span></div>
+      <div class="history-list" id="historyList"><div class="empty-history">No readings yet. Your session will appear here.</div></div>
+    </section>
+  </main>
+  <footer class="footer"><span>face / feeling lab</span><span>prototype interface</span></footer>
+  <script src="app.js"></script>
+</body>
+</html>
