@@ -1,35 +1,91 @@
-# Emotion detection using deep learning
+# Emotion Detection Lab
 
-## Introduction
+## Product Overview
 
-This project aims to classify the emotion on a person's face into one of **seven categories**, using deep convolutional neural networks. The model is trained on the **FER-2013** dataset which was published on International Conference on Machine Learning (ICML). This dataset consists of 35887 grayscale, 48x48 sized face images with **seven emotions** - angry, disgusted, fearful, happy, neutral, sad and surprised.
+Emotion Detection Lab is a computer-vision application that analyzes a visible facial expression and estimates one of seven classes: **Angry, Disgusted, Fearful, Happy, Neutral, Sad, or Surprised**.
 
-## Dependencies
+The project combines a browser preview with a Python inference service. A user can start a webcam, capture one frame for analysis, or upload a JPG/PNG. The Haar cascade locates the face, then a convolutional neural network (CNN) returns expression probabilities for the interface, including a confidence readout and session graph.
 
-* Python 3, [OpenCV](https://opencv.org/), [Tensorflow](https://www.tensorflow.org/)
+Project work and the browser interface were developed by **Paaras Mishra**. This repository builds on the MIT-licensed emotion-detection implementation credited in [LICENSE](LICENSE).
+
+## The Problem
+
+Facial-expression experiments are difficult to inspect in real time. A command-line script may return a label, but it does not show confidence, track deliberate captures, or provide a practical way to adapt the model to a new person.
+
+Common causes of unreliable results include:
+
+- Poor lighting, extreme angles, occlusion, or a face that is too far from the camera.
+- Limited or imbalanced training examples for a person's expressions.
+- Confusing model confidence with actual accuracy.
+- Continuous webcam predictions that fluctuate from frame to frame without producing a stable, reviewable sample.
+
+## The Solution
+
+This project provides a capture-based workflow:
+
+1. The browser requests a webcam frame only when the user selects **Capture & analyze**.
+2. The Python service decodes the frame and uses a Haar cascade to find the largest face.
+3. The face is converted to grayscale and resized to the CNN's expected 48x48 input.
+4. The CNN produces probabilities for all seven expression classes.
+5. The interface displays the strongest prediction, confidence, class distribution, recent readings, and a session graph.
+6. A separate command-line collector creates balanced, person-specific training data without saving images through the website.
+
+Each plotted point is an intentional capture rather than an untracked fluctuation from a continuous stream.
+
+## Main Features
+
+- Webcam face detection with OpenCV Haar cascade.
+- One-capture-at-a-time CNN analysis.
+- JPG and PNG upload analysis.
+- Seven-class probability distribution.
+- Confidence meter, history list, and emotion-over-time plot.
+- Light and dark interface themes.
+- Separate personal-data collector with labeled expression folders.
+- Personal CNN fine-tuning with configurable epochs and validation checkpoints.
+
+## Use Cases
+
+- Learning how face detection and CNN classification work together.
+- Demonstrating a computer-vision pipeline in a classroom or portfolio project.
+- Testing how a model responds to deliberate expression changes.
+- Prototyping an interface for human-computer interaction research.
+- Fine-tuning a model for one person's expression style using labeled images.
+
+This is an expression-classification prototype, not a reliable measurement of a person's internal emotional state. Predictions should not be used for medical, employment, disciplinary, or other high-impact decisions.
+
+## Dependencies and Setup
+
+* Python 3.12, [OpenCV](https://opencv.org/), [TensorFlow](https://www.tensorflow.org/), [Flask](https://flask.palletsprojects.com/), and [Matplotlib](https://matplotlib.org/)
 * To install the required packages, run `pip install -r requirements.txt`.
+
+Clone the repository and enter the folder:
+
+```bash
+git clone https://github.com/PaarasMishra2114/EmotionDetectionMAIN.git
+cd EmotionDetectionMAIN
+C:\emotion-venv\Scripts\python.exe -m pip install -r requirements.txt
+```
 
 ## Basic Usage
 
-The repository is currently compatible with `tensorflow-2.0` and makes use of the Keras API using the `tensorflow.keras` library.
-
-* First, clone the repository and enter the folder
+Start the browser preview and CNN API:
 
 ```bash
-git clone https://github.com/atulapra/Emotion-detection.git
-cd Emotion-detection
+C:\emotion-venv\Scripts\python.exe server.py
 ```
+
+Open `http://127.0.0.1:8000`, start the camera, and choose **Capture & analyze**. You can also upload a JPG or PNG. The website analyzes images but does not collect or save training data.
 
 * Download the FER-2013 dataset inside the `src` folder.
 
-* If you want to train this model, use:  
+To use the original FER-2013 training workflow:
 
 ```bash
 cd src
 python emotions.py --mode train
 ```
 
-* If you want to view the predictions without training again, you can download the pre-trained model from [here](https://drive.google.com/file/d/1FUn0XNOzf-nQV7QjbBPA6-8GLoHNNgv-/view?usp=sharing) and then run:  
+To run the standalone webcam detector:
 
 ```bash
 cd src
