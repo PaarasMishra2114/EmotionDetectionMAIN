@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 data/personal/
 src/model_before_personal_training.h5
+src/model_before_second_training.h5
