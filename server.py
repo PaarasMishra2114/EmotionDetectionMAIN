@@ -6,6 +6,9 @@ import numpy as np
 import tensorflow as tf
 from flask import Flask, jsonify, request, send_from_directory
 
+tf.config.threading.set_intra_op_parallelism_threads(1)
+tf.config.threading.set_inter_op_parallelism_threads(1)
+
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(ROOT, 'src')
 EMOTIONS = ['Angry', 'Disgusted', 'Fearful', 'Happy', 'Neutral', 'Sad', 'Surprised']
@@ -56,7 +59,7 @@ def predict():
         return jsonify(error='No face detected'), 422
     x, y, width, height = max(faces, key=lambda face: face[2] * face[3])
     face = cv2.resize(gray[y:y + height, x:x + width], (48, 48)).astype('float32') / 255.0
-    probabilities = model.predict(face[np.newaxis, ..., np.newaxis], verbose=0)[0]
+    probabilities = model(face[np.newaxis, ..., np.newaxis], training=False).numpy()[0]
     index = int(np.argmax(probabilities))
     return jsonify(emotion=EMOTIONS[index], confidence=float(probabilities[index]), emotions={name: float(value) for name, value in zip(EMOTIONS, probabilities)}, face={'x': int(x), 'y': int(y), 'width': int(width), 'height': int(height)})
 
