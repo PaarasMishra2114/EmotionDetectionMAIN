@@ -28,6 +28,14 @@ async function getPrediction(image) {
     return await response.json();
   } catch (error) { throw new Error(`CNN unavailable: ${error.message}`); }
 }
+function frameDataUrl() {
+  const sourceWidth = video.videoWidth || 640; const sourceHeight = video.videoHeight || 480;
+  const scale = Math.min(1, 960 / Math.max(sourceWidth, sourceHeight));
+  state.captureWidth = Math.round(sourceWidth * scale); state.captureHeight = Math.round(sourceHeight * scale);
+  const frame = document.createElement('canvas'); frame.width = state.captureWidth; frame.height = state.captureHeight;
+  frame.getContext('2d').drawImage(video, 0, 0, frame.width, frame.height);
+  return frame.toDataURL('image/jpeg', .9);
+}
 function drawFaceMarker(face = state.face) {
   const width = overlay.clientWidth; const height = overlay.clientHeight;
   overlay.width = width; overlay.height = height;
@@ -54,8 +62,7 @@ async function captureAndAnalyze() {
   if (!state.running || state.analyzing) return;
   state.analyzing = true; $('captureButton').disabled = true; $('captureButton').innerHTML = '<span class="button-icon">&#8230;</span> Analyzing'; $('signalLabel').textContent = 'CNN analyzing';
   try {
-    const frame = document.createElement('canvas'); frame.width = 640; frame.height = 480; frame.getContext('2d').drawImage(video, 0, 0, frame.width, frame.height);
-    const prediction = await getPrediction(frame.toDataURL('image/jpeg', .88));
+    const prediction = await getPrediction(frameDataUrl());
     const values = prediction.emotions || Object.fromEntries(emotions.map((emotion) => [emotion, emotion === prediction.emotion ? prediction.confidence : (1 - prediction.confidence) / 6]));
     state.face = prediction.face || null; drawFaceMarker(); setSignal(prediction.emotion, prediction.confidence, 'CNN + vision signal'); renderDistribution(values); state.samples.push({ emotion: prediction.emotion, values }); state.samples = state.samples.slice(-45); $('sampleCount').textContent = state.samples.length; $('plotEmpty').style.display = 'none'; drawPlot(); addHistory(prediction);
   } catch (error) { $('signalLabel').textContent = error.message.includes('No face') ? 'no face detected' : 'analysis failed'; $('signalEmotion').textContent = 'Try again'; $('confidenceValue').textContent = '0%'; $('confidenceBar').style.width = '0%'; console.error(error); }
@@ -72,7 +79,7 @@ async function analyzeUploadedImage(file) {
   finally { state.analyzing = false; $('uploadStatus').textContent = 'Choose a clear face image for CNN analysis'; }
 }
 async function startCamera() {
-  try { state.stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }, audio: false }); video.srcObject = state.stream; await video.play(); state.running = true; state.face = null; state.startedAt = Date.now(); $('cameraFrame').classList.add('is-live'); $('placeholder').style.display = 'none'; $('cameraStatus').textContent = 'camera live'; $('cameraStatus').className = 'status-pill live'; $('startButton').disabled = true; $('captureButton').disabled = false; drawFaceMarker(); } catch (error) { $('cameraStatus').textContent = 'camera blocked'; $('signalLabel').textContent = 'permission needed'; $('placeholder').querySelector('p').textContent = 'Camera access was not granted'; console.error(error); }
+  try { state.stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 1280 }, facingMode: 'user', aspectRatio: { ideal: 1 } }, audio: false }); video.srcObject = state.stream; await video.play(); state.running = true; state.face = null; state.startedAt = Date.now(); $('cameraFrame').classList.add('is-live'); $('placeholder').style.display = 'none'; $('cameraStatus').textContent = 'camera live'; $('cameraStatus').className = 'status-pill live'; $('startButton').disabled = true; $('captureButton').disabled = false; document.documentElement.style.setProperty('--camera-ratio', `${video.videoWidth} / ${video.videoHeight}`); drawFaceMarker(); } catch (error) { $('cameraStatus').textContent = 'camera blocked'; $('signalLabel').textContent = 'permission needed'; $('placeholder').querySelector('p').textContent = 'Camera access was not granted'; console.error(error); }
 }
 function reset() { if (state.stream) state.stream.getTracks().forEach((track) => track.stop()); state.stream = null; state.running = false; state.analyzing = false; state.face = null; state.startedAt = null; state.samples = []; state.history = []; $('cameraFrame').classList.remove('is-live'); $('placeholder').style.display = 'grid'; $('cameraStatus').textContent = 'camera idle'; $('cameraStatus').className = 'status-pill idle'; $('startButton').disabled = false; $('captureButton').disabled = true; $('signalLabel').textContent = 'Waiting for input'; $('signalEmotion').textContent = 'Neutral'; $('signalEmotion').style.color = colors.Neutral; $('confidenceValue').textContent = '0%'; $('confidenceBar').style.width = '0%'; $('sampleCount').textContent = '0'; $('sessionDuration').textContent = '00:00'; $('historyCount').textContent = '0 events'; $('historyList').innerHTML = '<div class="empty-history">No readings yet. Your session will appear here.</div>'; $('plotEmpty').style.display = 'grid'; renderDistribution(); context.clearRect(0, 0, overlay.width, overlay.height); drawPlot(); }
 $('startButton').addEventListener('click', startCamera); $('captureButton').addEventListener('click', captureAndAnalyze); $('resetButton').addEventListener('click', reset); setInterval(updateSession, 1000); window.addEventListener('resize', () => { drawPlot(); drawFaceMarker(); }); renderDistribution(); drawPlot();
