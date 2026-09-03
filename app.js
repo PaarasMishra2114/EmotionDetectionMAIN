@@ -1,6 +1,6 @@
 const emotions = ['Angry', 'Disgusted', 'Fearful', 'Happy', 'Neutral', 'Sad', 'Surprised'];
 const colors = { Angry: '#ed6a50', Disgusted: '#4c966d', Fearful: '#8170a7', Happy: '#f2c14e', Neutral: '#4f82a7', Sad: '#147d78', Surprised: '#c46680' };
-const state = { stream: null, running: false, startedAt: null, samples: [], history: [], analyzing: false };
+const state = { stream: null, running: false, startedAt: null, samples: [], history: [], analyzing: false, face: null, captureWidth: 640, captureHeight: 480 };
 const $ = (id) => document.getElementById(id);
 const video = $('video');
 const overlay = $('overlay');
@@ -28,12 +28,12 @@ async function getPrediction(image) {
     return await response.json();
   } catch (error) { throw new Error(`CNN unavailable: ${error.message}`); }
 }
-function drawFaceMarker() {
+function drawFaceMarker(face = state.face) {
   const width = overlay.clientWidth; const height = overlay.clientHeight;
   overlay.width = width; overlay.height = height;
   context.clearRect(0, 0, width, height);
-  if (!state.running) return;
-  const boxWidth = width * .34; const boxHeight = height * .54; const x = (width - boxWidth) / 2; const y = (height - boxHeight) / 2;
+  if (!state.running || !face) return;
+  const scaleX = width / state.captureWidth; const scaleY = height / state.captureHeight; const x = face.x * scaleX; const y = face.y * scaleY; const boxWidth = face.width * scaleX; const boxHeight = face.height * scaleY;
   context.strokeStyle = '#f2c14e'; context.lineWidth = 2; context.setLineDash([8, 6]); context.strokeRect(x, y, boxWidth, boxHeight); context.setLineDash([]);
   context.fillStyle = '#f2c14e'; context.font = '11px monospace'; context.fillText('FACE / TRACKING', x, y - 10);
 }
@@ -57,7 +57,7 @@ async function captureAndAnalyze() {
     const frame = document.createElement('canvas'); frame.width = 640; frame.height = 480; frame.getContext('2d').drawImage(video, 0, 0, frame.width, frame.height);
     const prediction = await getPrediction(frame.toDataURL('image/jpeg', .88));
     const values = prediction.emotions || Object.fromEntries(emotions.map((emotion) => [emotion, emotion === prediction.emotion ? prediction.confidence : (1 - prediction.confidence) / 6]));
-    setSignal(prediction.emotion, prediction.confidence, 'CNN + vision signal'); renderDistribution(values); state.samples.push({ emotion: prediction.emotion, values }); state.samples = state.samples.slice(-45); $('sampleCount').textContent = state.samples.length; $('plotEmpty').style.display = 'none'; drawPlot(); addHistory(prediction);
+    state.face = prediction.face || null; drawFaceMarker(); setSignal(prediction.emotion, prediction.confidence, 'CNN + vision signal'); renderDistribution(values); state.samples.push({ emotion: prediction.emotion, values }); state.samples = state.samples.slice(-45); $('sampleCount').textContent = state.samples.length; $('plotEmpty').style.display = 'none'; drawPlot(); addHistory(prediction);
   } catch (error) { $('signalLabel').textContent = error.message.includes('No face') ? 'no face detected' : 'analysis failed'; $('signalEmotion').textContent = 'Try again'; $('confidenceValue').textContent = '0%'; $('confidenceBar').style.width = '0%'; console.error(error); }
   finally { state.analyzing = false; $('captureButton').disabled = !state.running; $('captureButton').innerHTML = '<span class="button-icon">&#9673;</span> Capture &amp; analyze'; }
 }
@@ -72,9 +72,9 @@ async function analyzeUploadedImage(file) {
   finally { state.analyzing = false; $('uploadStatus').textContent = 'Choose a clear face image for CNN analysis'; }
 }
 async function startCamera() {
-  try { state.stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }, audio: false }); video.srcObject = state.stream; await video.play(); state.running = true; state.startedAt = Date.now(); $('cameraFrame').classList.add('is-live'); $('placeholder').style.display = 'none'; $('cameraStatus').textContent = 'camera live'; $('cameraStatus').className = 'status-pill live'; $('startButton').disabled = true; $('captureButton').disabled = false; drawFaceMarker(); } catch (error) { $('cameraStatus').textContent = 'camera blocked'; $('signalLabel').textContent = 'permission needed'; $('placeholder').querySelector('p').textContent = 'Camera access was not granted'; console.error(error); }
+  try { state.stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }, audio: false }); video.srcObject = state.stream; await video.play(); state.running = true; state.face = null; state.startedAt = Date.now(); $('cameraFrame').classList.add('is-live'); $('placeholder').style.display = 'none'; $('cameraStatus').textContent = 'camera live'; $('cameraStatus').className = 'status-pill live'; $('startButton').disabled = true; $('captureButton').disabled = false; drawFaceMarker(); } catch (error) { $('cameraStatus').textContent = 'camera blocked'; $('signalLabel').textContent = 'permission needed'; $('placeholder').querySelector('p').textContent = 'Camera access was not granted'; console.error(error); }
 }
-function reset() { if (state.stream) state.stream.getTracks().forEach((track) => track.stop()); state.stream = null; state.running = false; state.analyzing = false; state.startedAt = null; state.samples = []; state.history = []; $('cameraFrame').classList.remove('is-live'); $('placeholder').style.display = 'grid'; $('cameraStatus').textContent = 'camera idle'; $('cameraStatus').className = 'status-pill idle'; $('startButton').disabled = false; $('captureButton').disabled = true; $('signalLabel').textContent = 'Waiting for input'; $('signalEmotion').textContent = 'Neutral'; $('signalEmotion').style.color = colors.Neutral; $('confidenceValue').textContent = '0%'; $('confidenceBar').style.width = '0%'; $('sampleCount').textContent = '0'; $('sessionDuration').textContent = '00:00'; $('historyCount').textContent = '0 events'; $('historyList').innerHTML = '<div class="empty-history">No readings yet. Your session will appear here.</div>'; $('plotEmpty').style.display = 'grid'; renderDistribution(); context.clearRect(0, 0, overlay.width, overlay.height); drawPlot(); }
+function reset() { if (state.stream) state.stream.getTracks().forEach((track) => track.stop()); state.stream = null; state.running = false; state.analyzing = false; state.face = null; state.startedAt = null; state.samples = []; state.history = []; $('cameraFrame').classList.remove('is-live'); $('placeholder').style.display = 'grid'; $('cameraStatus').textContent = 'camera idle'; $('cameraStatus').className = 'status-pill idle'; $('startButton').disabled = false; $('captureButton').disabled = true; $('signalLabel').textContent = 'Waiting for input'; $('signalEmotion').textContent = 'Neutral'; $('signalEmotion').style.color = colors.Neutral; $('confidenceValue').textContent = '0%'; $('confidenceBar').style.width = '0%'; $('sampleCount').textContent = '0'; $('sessionDuration').textContent = '00:00'; $('historyCount').textContent = '0 events'; $('historyList').innerHTML = '<div class="empty-history">No readings yet. Your session will appear here.</div>'; $('plotEmpty').style.display = 'grid'; renderDistribution(); context.clearRect(0, 0, overlay.width, overlay.height); drawPlot(); }
 $('startButton').addEventListener('click', startCamera); $('captureButton').addEventListener('click', captureAndAnalyze); $('resetButton').addEventListener('click', reset); setInterval(updateSession, 1000); window.addEventListener('resize', () => { drawPlot(); drawFaceMarker(); }); renderDistribution(); drawPlot();
 $('imageInput').addEventListener('change', (event) => { const [file] = event.target.files; if (file) analyzeUploadedImage(file); event.target.value = ''; });
 $('themeToggle').addEventListener('click', () => { const dark = document.documentElement.dataset.theme !== 'dark'; document.documentElement.dataset.theme = dark ? 'dark' : 'light'; localStorage.setItem('emotion-theme', dark ? 'dark' : 'light'); $('themeLabel').textContent = dark ? 'dark' : 'light'; $('themeToggle').setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme'); }); $('themeLabel').textContent = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
